@@ -133,6 +133,9 @@ env_variables.py
 .spyderproject
 .spyproject
 
+# VScode settings
+.vscode
+
 # Rope project settings
 .ropeproject
 
