@@ -2,11 +2,16 @@ from sensor.entity.config_entity import TrainingPipelineConfig, DataIngestionCon
 from sensor.entity.config_entity import DataValidationConfig, DataTransformationConfig
 from sensor.entity.artifact_entity import DataIngestionArtifact, DataValidationArtifact
 from sensor.entity.artifact_entity import DataTransformationArtifact, ModelTrainerArtifact
-from sensor.entity.config_entity import ModelTrainerConfig
+from sensor.entity.config_entity import ModelTrainerConfig, ModelEvaluationConfig
+from sensor.entity.config_entity import ModelPusherConfig
+from sensor.entity.artifact_entity import ModelEvaluationArtifact, ModelPusherArtifact
+from sensor.entity.artifact_entity import ModelTrainerArtifact
 from sensor.components.data_ingestion import DataIngestion
 from sensor.components.data_validation import DataValidation
 from sensor.components.data_transformation import DataTransformation
 from sensor.components.model_trainer import ModelTrainer
+from sensor.components.model_evaluation import ModelEvaluation
+from sensor.components.model_pusher import ModelPusher
 from sensor.exception import SensorException
 import sys
 from sensor.logger import logging
@@ -69,16 +74,28 @@ class TrainPipeline:
             raise SensorException(e, sys)
         
 
-    def start_model_evaluation(self):
+    def start_model_evaluation(self, model_trainer_artifact:ModelTrainerArtifact,
+                                     data_validation_artifact:DataValidationArtifact):
         try:
-            pass
+            logging.info("Model evaluation started")
+            model_evaluation_config = ModelEvaluationConfig(training_pipeline_config=self.training_pipeline_config)
+            model_evaluation = ModelEvaluation(model_eval_config=model_evaluation_config,
+                                               data_validation_artifact=data_validation_artifact,
+                                               model_trainer_artifact=model_trainer_artifact)
+            model_evaluation_artifact = model_evaluation.initiate_model_evaluation()
+            return model_evaluation_artifact 
         except Exception as e:
             raise SensorException(e, sys)
         
     
-    def start_model_pusher(self):
+    def start_model_pusher(self, model_evaluation_artifact:ModelEvaluationArtifact):
         try:
-            pass
+            logging.info("Model pusher started")
+            model_pusher_config = ModelPusherConfig(training_pipeline_config=self.training_pipeline_config)
+            model_pusher = ModelPusher(model_pusher_config=model_pusher_config,
+                                       model_evaluation_artifact=model_evaluation_artifact)
+            model_pusher_artifact = model_pusher.initiate_model_pusher()
+            return model_pusher_artifact
         except Exception as e:
             raise SensorException(e, sys)
         
@@ -89,5 +106,13 @@ class TrainPipeline:
             data_validation_artifact:DataValidationArtifact = self.start_data_validation(data_ingestion_artifact=data_ingestion_artifact)
             data_transformation_artifact:DataTransformationArtifact = self.start_data_transformation(data_validation_artifact=data_validation_artifact)
             model_trainer_artifact:ModelTrainerArtifact = self.start_model_trainer(data_transformation_artfact=data_transformation_artifact) 
+            model_evaluation_artifact:ModelEvaluationArtifact = self.start_model_evaluation(model_trainer_artifact=model_trainer_artifact,
+                                                                                            data_validation_artifact=data_validation_artifact)
+            if not model_evaluation_artifact.is_model_accepted:
+                logging.info("Trained model is not better than best model")
+                raise Exception("Trained model is not better than best model")
+                
+            model_pusher_artifact:ModelPusherArtifact = self.start_model_pusher(model_evaluation_artifact=model_evaluation_artifact)
+            logging.info("Training Pipeline Completed Successfully.")
         except Exception as e:
             raise SensorException(e, sys)
