@@ -13,7 +13,7 @@ class MongoDBClient:
         try:
             if MongoDBClient.client is None:
                 mongo_db_url = MONGODB_URL
-                print(mongo_db_url)
+                print("Connected to MongoDB....")
                 MongoDBClient.client = pymongo.MongoClient(mongo_db_url, tlsCAFile=ca)
             self.client = MongoDBClient.client
             self.database = self.client[database_name]

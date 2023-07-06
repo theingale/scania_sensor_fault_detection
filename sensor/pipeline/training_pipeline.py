@@ -19,6 +19,8 @@ from sensor.logger import logging
 
 class TrainPipeline:
 
+    is_pipeline_running = False
+    
     def __init__(self):
         self.training_pipeline_config = TrainingPipelineConfig()
         
@@ -102,6 +104,7 @@ class TrainPipeline:
 
     def run_pipeline(self):
         try:
+            TrainPipeline.is_pipeline_running = True
             data_ingestion_artifact:DataIngestionArtifact = self.start_data_ingestion()
             data_validation_artifact:DataValidationArtifact = self.start_data_validation(data_ingestion_artifact=data_ingestion_artifact)
             data_transformation_artifact:DataTransformationArtifact = self.start_data_transformation(data_validation_artifact=data_validation_artifact)
@@ -114,5 +117,7 @@ class TrainPipeline:
                 
             model_pusher_artifact:ModelPusherArtifact = self.start_model_pusher(model_evaluation_artifact=model_evaluation_artifact)
             logging.info("Training Pipeline Completed Successfully.")
+            TrainPipeline.is_pipeline_running = False
         except Exception as e:
+            TrainPipeline.is_pipeline_running = False
             raise SensorException(e, sys)
