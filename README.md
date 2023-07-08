@@ -59,14 +59,17 @@ MONGODB_URL = "<YOUR MONGO DB URL>"
 uvicorn main:app
 ```
 
-### Step 6. Train application
+### Step 6. Train api
 ```bash
 http://localhost:8080/train
 
 ```
 
-### Step 7. Prediction application
+### Step 7. Prediction api
 ```bash
 http://localhost:8080/predict
+```
+## Future Scope
+The APIs can be containerized using Docker and can be deployed in any cloud service like Aws, Azure or GCP.
 
 
