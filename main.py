@@ -1,16 +1,17 @@
 from sensor.configuration.mongo_db_connection import MongoDBClient
 from sensor.exception import SensorException
 import os,sys
+import pandas as pd
 from sensor.logger import logging
 from sensor.pipeline import training_pipeline
 from sensor.pipeline.training_pipeline import TrainPipeline
 from sensor.utils.main_utils import read_yaml_file
 from sensor.constant.training_pipeline import SAVED_MODEL_DIR
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile
 from sensor.constant.application import APP_HOST, APP_PORT
 from starlette.responses import RedirectResponse
 from uvicorn import run as app_run
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
 from sensor.ml.model.estimator import ModelResolver,TargetValueMapping
 from sensor.utils.main_utils import load_object
 from fastapi.middleware.cors import CORSMiddleware 
@@ -52,15 +53,14 @@ async def train_route():
     except Exception as e:
         return Response(f"Error Occurred! {e}")
 
-@app.get("/predict")
-async def predict_route():
+@app.post("/predict")
+async def predict_route(file: UploadFile = File(...)):
     try:
         #get data from user csv file
-        
-        
-        #conver csv file to dataframe
-
-        df=None
+        csv_data = file.file
+        #convert csv file to dataframe
+        df=pd.read_csv(csv_data)
+        logging.info(f"file read scucessfully with features {len(df.columns)}")
         model_resolver = ModelResolver(model_dir=SAVED_MODEL_DIR)
         if not model_resolver.is_model_exists():
             return Response("Model is not available")
@@ -70,8 +70,12 @@ async def predict_route():
         y_pred = model.predict(df)
         df['predicted_column'] = y_pred
         df['predicted_column'].replace(TargetValueMapping().reverse_mapping(),inplace=True)
+        # decide how to return file to user
         
-        #decide how to return file to user
+        return StreamingResponse(iter([df.to_csv(index=False)]),
+                                media_type="csv",
+                                headers={"Content-Disposition": f"attachment; filename=predictions.csv"}
+                                )
         
     except Exception as e:
         raise Response(f"Error Occured! {e}")
